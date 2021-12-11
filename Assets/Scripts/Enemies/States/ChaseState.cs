@@ -22,6 +22,7 @@ namespace Enemies.States
 
         public void Enter()
         {
+            _enemyAnimator.DisableStrafe();
         }
 
         public void Tick() => ChasePlayer();
@@ -33,7 +34,7 @@ namespace Enemies.States
         private void ChasePlayer()
         {
             Vector3 direction = (_playerTransform.position - _characterController.transform.position).normalized;
-            _characterController.Move(direction * _enemyStats.MovementSpeed * Time.deltaTime);
+            _characterController.Move(direction * (_enemyStats.MovementSpeed * Time.deltaTime));
 
             _enemyAnimator.UpdateMovementAnimation(_characterController.velocity.normalized.magnitude);
 

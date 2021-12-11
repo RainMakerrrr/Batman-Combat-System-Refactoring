@@ -9,11 +9,13 @@ using Zenject;
 
 namespace Enemies
 {
-    public class Enemy : MonoBehaviour, IHitable
+    public class Enemy : MonoBehaviour, IAttacker
     {
         public event Action<Enemy> Die;
+        public event Action<Enemy> AttackEnded;
 
         private const string PlayerLayerName = "Player";
+        private const string DefaultLayerName = "Default";
         private const float Radius = 2f;
 
         [SerializeField] private CharacterController _characterController;
@@ -34,9 +36,9 @@ namespace Enemies
         private readonly Collider[] _colliders = new Collider[1];
 
         public Vector3 Position => transform.position;
-        public IState CurrentState => _stateMachine.CurrentState;
-        public AnimatorState AnimatorState => _stateReader.CurrentState;
-        
+        public Vector3 Forward => transform.forward;
+        public IState State => _stateMachine.CurrentState;
+
         public bool AllowToAttack { get; set; }
 
         [Inject]
@@ -68,6 +70,8 @@ namespace Enemies
                 _enemyAnimator.PlayDeath();
                 DisableEnemy();
             }
+
+            AttackEnded?.Invoke(this);
         }
 
         private void Update()
@@ -81,13 +85,14 @@ namespace Enemies
             var chaseState = new ChaseState(_characterController, _enemyAnimator, _playerTransform, _enemyStats);
             var strafeState = new StrafeState(_characterController, _enemyAnimator, _playerTransform, _enemyStats);
             var attackState = new AttackState(_characterController, _enemyAnimator, _playerTransform, _enemyStats,
-                _attackPreparingParticle);
+                _attackPreparingParticle, _stateMachine);
             var hurtState = new HurtState(_enemyHealth, _characterController, _enemyAnimator);
 
             _stateMachine.AddTransition(idleState, strafeState, CanStrafe);
             _stateMachine.AddTransition(idleState, chaseState, () => AllowToAttack && CanStrafe());
-            _stateMachine.AddTransition(strafeState, chaseState, () => AllowToAttack && CanStrafe());
+            _stateMachine.AddTransition(strafeState, chaseState, () => AllowToAttack && !CanAttack());
             _stateMachine.AddTransition(strafeState, idleState, () => !AllowToAttack && !CanStrafe());
+            _stateMachine.AddTransition(strafeState, attackState, () => AllowToAttack && CanAttack());
             _stateMachine.AddTransition(chaseState, strafeState, () => !AllowToAttack || !CanStrafe());
             _stateMachine.AddTransition(chaseState, attackState, CanAttack);
 
@@ -108,7 +113,7 @@ namespace Enemies
         /// </summary>
         private void Attack()
         {
-            if (CurrentState is AttackState == false) return;
+            if (State is AttackState == false) return;
 
             int count = Physics.OverlapSphereNonAlloc(transform.position, Radius, _colliders,
                 LayerMask.GetMask(PlayerLayerName));
@@ -119,18 +124,20 @@ namespace Enemies
                 if (coll.TryGetComponent(out IHitable hitable))
                     hitable.TakeHit();
             }
+
+            AttackEnded?.Invoke(this);
         }
 
         private void DisableEnemy()
         {
             _characterController.enabled = false;
-            gameObject.layer = LayerMask.NameToLayer("Default");
+            gameObject.layer = LayerMask.NameToLayer(DefaultLayerName);
             Die?.Invoke(this);
 
             Destroy(this);
         }
 
-        private bool CanStrafe() =>
+        public bool CanStrafe() =>
             Vector3.Distance(transform.position, _playerTransform.position) <= _enemyStats.StrafeRange;
 
         private bool CanAttack() =>

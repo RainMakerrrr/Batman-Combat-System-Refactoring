@@ -1,5 +1,4 @@
-﻿using System;
-using Data;
+﻿using Data;
 using DG.Tweening;
 using Enemies;
 using Player.Animations;
@@ -17,15 +16,15 @@ namespace Player.Combat
 
         [SerializeField] private PlayerAnimator _animator;
         [SerializeField] private HitableDetector _hitableDetector;
+        [SerializeField] private AttackerDetector _attackerDetector;
         [SerializeField] private AnimatorStateReader _stateReader;
 
         private IInputService _inputService;
         private IAssetProvider _assetProvider;
         private IHitable _currentTarget;
+        private IAttacker _currentAttacker;
         private PlayerStats _playerStats;
 
-        private EnemiesBattleRouter _enemiesBattleRouter;
-        
         private bool CanAttack => _stateReader.CurrentState != AnimatorState.Attack &&
                                   _stateReader.CurrentState != AnimatorState.Hit;
 
@@ -37,7 +36,6 @@ namespace Player.Combat
         {
             _inputService = inputService;
             _assetProvider = assetProvider;
-            _enemiesBattleRouter = enemiesBattleRouter;
         }
 
         private void OnEnable()
@@ -60,31 +58,30 @@ namespace Player.Combat
                 return;
             }
 
-            StartAttack();
+            StartAttack(_currentTarget.Position);
         }
 
         private void OnCounter()
         {
             if (CanAttack == false) return;
-            if (_enemiesBattleRouter.HasAttackingEnemy() == false) return;
-            
-            Enemy enemy = _enemiesBattleRouter.CurrentEnemy;
-            if (enemy == null) return;
-            
-            _currentTarget = enemy;
-            
-            _animator.PlayDodgeAnimation();
-            transform.DOLookAt(enemy.transform.position, _playerStats.LookAtTween);
-            transform.DOMove(transform.position + enemy.transform.forward, _playerStats.MovementTween);
 
-            DOVirtual.DelayedCall(0.2f, StartAttack);
+            _currentAttacker = _attackerDetector.CurrentAttacker;
+             if (_currentAttacker == null) return;
+
+             _currentTarget = _currentAttacker;
+             
+            _animator.PlayDodgeAnimation();
+            transform.DOLookAt(_currentAttacker.Position, _playerStats.LookAtTween);
+            transform.DOMove(transform.position + _currentAttacker.Forward, _playerStats.MovementTween);
+
+            DOVirtual.DelayedCall(0.2f, () => StartAttack(_currentAttacker.Position));
         }
 
-        private void StartAttack()
+        private void StartAttack(Vector3 position)
         {
             _animator.PlayAttackAnimation();
 
-            MoveToTarget(_currentTarget.Position);
+            MoveToTarget(position);
             LerpAcceleration();
         }
 

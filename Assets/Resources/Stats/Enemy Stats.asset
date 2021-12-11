@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   MovementSpeed: 4
   RotationSpeed: 5
-  StafeSpeed: 0.5
-  ChaseRange: 6
+  StrafeSpeed: 0.5
+  BackStafeSpeed: 1
   StrafeRange: 10
   AttackRange: 1.5
   AttackRate: 0.45

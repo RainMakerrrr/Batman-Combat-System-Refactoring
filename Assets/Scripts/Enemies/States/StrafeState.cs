@@ -12,6 +12,7 @@ namespace Enemies.States
         private readonly EnemyStats _enemyStats;
 
         private Vector3 _randomDirection;
+        private float _strafeSpeed;
 
         public StrafeState(CharacterController characterController, IEnemyAnimator enemyAnimator,
             Transform playerTransform, EnemyStats enemyStats)
@@ -25,7 +26,13 @@ namespace Enemies.States
         public void Enter()
         {
             _enemyAnimator.EnableStrafe();
-            _randomDirection = Random.Range(0, 2) == 1 ? Vector3.left : Vector3.right;
+            Vector3[] directions =
+            {
+                Vector3.back, Vector3.left, Vector3.right
+            };
+
+            _randomDirection = directions[Random.Range(0, directions.Length)];
+            _strafeSpeed = _randomDirection == Vector3.back ? _enemyStats.BackStafeSpeed : _enemyStats.StrafeSpeed;
         }
 
         public void Tick()
@@ -35,7 +42,9 @@ namespace Enemies.States
             Strafe();
         }
 
-        public void Exit() => _enemyAnimator.DisableStrafe();
+        public void Exit()
+        {
+        }
 
         private void UpdateStrafeAnimation() => _enemyAnimator.UpdateStrafeAnimation(_randomDirection.normalized.x);
 
@@ -46,9 +55,11 @@ namespace Enemies.States
             Vector3 direction = (_playerTransform.position - _characterController.transform.position).normalized;
             Vector3 perpendicular = Quaternion.AngleAxis(90f, Vector3.up) * direction;
 
-            Vector3 finalDirection = perpendicular * _randomDirection.normalized.x;
+            Vector3 finalDirection = _randomDirection == Vector3.back
+                ? -direction
+                : perpendicular * _randomDirection.normalized.x;
 
-            _characterController.Move(finalDirection * (_enemyStats.StafeSpeed * Time.deltaTime));
+            _characterController.Move(finalDirection * (_strafeSpeed * Time.deltaTime));
         }
     }
 }

@@ -12,18 +12,20 @@ namespace Enemies.States
         private readonly Transform _playerTransform;
         private readonly EnemyStats _enemyStats;
         private readonly ParticleSystem _attackPreparingParticle;
+        private readonly StateMachine _stateMachine;
 
         private float _nextAttackTime;
         private float _attackRate;
 
         public AttackState(CharacterController characterController, IEnemyAnimator enemyAnimator,
-            Transform playerTransform, EnemyStats enemyStats, ParticleSystem attackPreparingParticle)
+            Transform playerTransform, EnemyStats enemyStats, ParticleSystem attackPreparingParticle, StateMachine stateMachine)
         {
             _characterController = characterController;
             _enemyAnimator = enemyAnimator;
             _playerTransform = playerTransform;
             _enemyStats = enemyStats;
             _attackPreparingParticle = attackPreparingParticle;
+            _stateMachine = stateMachine;
         }
 
         public void Enter()
@@ -50,7 +52,6 @@ namespace Enemies.States
 
         public void Exit()
         {
-            _enemyAnimator.DisableStrafe();
             _attackPreparingParticle.Clear();
             _attackPreparingParticle.Stop();
         }
@@ -66,7 +67,7 @@ namespace Enemies.States
         private void Strafe()
         {
             Vector3 direction = (_playerTransform.position - _characterController.transform.position).normalized;
-            _characterController.Move(direction * (_enemyStats.StafeSpeed * Time.deltaTime));
+            _characterController.Move(direction * (_enemyStats.StrafeSpeed * Time.deltaTime));
         }
 
         private void Attack()
@@ -78,6 +79,8 @@ namespace Enemies.States
                 _nextAttackTime = Time.time + 1f / _attackRate;
                 DOVirtual.DelayedCall(_attackPreparingParticle.main.duration, () =>
                 {
+                    if (_stateMachine.CurrentState is AttackState == false) return;
+                    
                     _enemyAnimator.PlayAttack();
                     _attackPreparingParticle.Clear();
                     _attackPreparingParticle.Stop();
